@@ -12,7 +12,7 @@ UBICACION="spaincentral"
 APP="gh-empresa-en-una-caja"
 RG_ESTADO="rg-tfstate-ehc"
 CONTENEDOR="tfstate"
-SUFIJO="$(tr -dc 'a-z0-9' </dev/urandom | head -c 6)"
+SUFIJO="$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
 SA_ESTADO="sttfstate${SUFIJO}"
 FICHERO_SALIDA="$HOME/empresa-caja-variables.txt"
 
