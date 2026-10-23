@@ -19,7 +19,3 @@ resource "azurerm_resource_group" "rg" {
   location = var.ubicacion
   tags     = local.etiquetas
 }
-
-data "azuread_domains" "dominios" {
-  only_default = true
-}

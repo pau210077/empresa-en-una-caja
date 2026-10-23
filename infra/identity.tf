@@ -26,7 +26,7 @@ resource "random_password" "usuario" {
 }
 
 resource "azuread_user" "ana" {
-  user_principal_name   = "ana.ruiz@${data.azuread_domains.dominios.domains[0].domain_name}"
+  user_principal_name   = "ana.ruiz@${var.dominio}"
   display_name          = "Ana Ruiz (Contabilidad)"
   mail_nickname         = "ana.ruiz"
   password              = random_password.usuario["ana.ruiz"].result
@@ -34,7 +34,7 @@ resource "azuread_user" "ana" {
 }
 
 resource "azuread_user" "marc" {
-  user_principal_name   = "marc.puig@${data.azuread_domains.dominios.domains[0].domain_name}"
+  user_principal_name   = "marc.puig@${var.dominio}"
   display_name          = "Marc Puig (Laboral)"
   mail_nickname         = "marc.puig"
   password              = random_password.usuario["marc.puig"].result
@@ -42,7 +42,7 @@ resource "azuread_user" "marc" {
 }
 
 resource "azuread_user" "laura" {
-  user_principal_name   = "laura.vidal@${data.azuread_domains.dominios.domains[0].domain_name}"
+  user_principal_name   = "laura.vidal@${var.dominio}"
   display_name          = "Laura Vidal (Dirección)"
   mail_nickname         = "laura.vidal"
   password              = random_password.usuario["laura.vidal"].result

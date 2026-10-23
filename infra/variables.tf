@@ -51,3 +51,9 @@ variable "hora_apagado" {
   type        = string
   default     = "2300"
 }
+
+variable "dominio" {
+  description = "Dominio por defecto del directorio de Entra ID donde se crean los usuarios de prueba."
+  type        = string
+  default     = "pmiro21gmail.onmicrosoft.com"
+}
