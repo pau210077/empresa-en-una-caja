@@ -1,0 +1,63 @@
+name: 2 · Simulacro de ransomware
+
+# Botón manual: ataque + recuperación + medición. Guarda los resultados y las imágenes en el repo.
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+
+concurrency:
+  group: empresa-en-una-caja
+  cancel-in-progress: false
+
+env:
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  GRUPO: rg-empresa-caja-demo
+
+jobs:
+  simulacro:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ataque, detección, restauración y verificación
+        shell: bash
+        run: |
+          set -euo pipefail
+          CUENTA=$(az storage account list -g "$GRUPO" --query "[0].name" -o tsv)
+          CLAVE=$(az storage account keys list -g "$GRUPO" -n "$CUENTA" --query "[0].value" -o tsv)
+          echo "::add-mask::$CLAVE"
+          export AZURE_STORAGE_ACCOUNT="$CUENTA" AZURE_STORAGE_KEY="$CLAVE"
+          pwsh -File scripts/Invoke-Simulacro.ps1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generar imágenes a partir de los datos reales
+        run: |
+          pip install pillow matplotlib
+          python scripts/generar_imagenes.py
+
+      - name: Guardar resultados e imágenes en el repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add resultados docs/img/simulacro
+          if git diff --cached --quiet; then
+            echo "Nada que guardar"
+          else
+            git commit -m "Resultados del simulacro"
+            git push
+          fi

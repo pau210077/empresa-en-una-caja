@@ -1,0 +1,70 @@
+name: 1 · Desplegar
+
+# Botón manual: crea toda la infraestructura y carga los documentos falsos.
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: empresa-en-una-caja
+  cancel-in-progress: false
+
+env:
+  ARM_USE_OIDC: "true"
+  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  TF_VAR_email_alertas: ${{ vars.ALERT_EMAIL }}
+  GRUPO: rg-empresa-caja-demo
+
+jobs:
+  desplegar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.x"
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init, fmt y validate
+        working-directory: infra
+        run: |
+          terraform fmt -check -recursive
+          terraform init \
+            -backend-config="resource_group_name=${{ vars.TFSTATE_RG }}" \
+            -backend-config="storage_account_name=${{ vars.TFSTATE_SA }}" \
+            -backend-config="container_name=${{ vars.TFSTATE_CONTAINER }}" \
+            -backend-config="key=empresa-en-una-caja.tfstate" \
+            -backend-config="use_oidc=true" \
+            -backend-config="use_azuread_auth=true"
+          terraform validate
+
+      - name: Terraform apply
+        working-directory: infra
+        run: terraform apply -auto-approve
+
+      - name: Generar y subir documentos falsos
+        shell: bash
+        run: |
+          set -euo pipefail
+          pwsh -File scripts/New-DocumentosFalsos.ps1 -Destino staging
+
+          CUENTA=$(az storage account list -g "$GRUPO" --query "[0].name" -o tsv)
+          CLAVE=$(az storage account keys list -g "$GRUPO" -n "$CUENTA" --query "[0].value" -o tsv)
+          echo "::add-mask::$CLAVE"
+          export AZURE_STORAGE_ACCOUNT="$CUENTA" AZURE_STORAGE_KEY="$CLAVE"
+
+          for share in contabilidad laboral direccion; do
+            az storage file upload-batch --destination "$share" --source "staging/$share" --only-show-errors
+          done
+          echo "Documentos subidos a $CUENTA"
